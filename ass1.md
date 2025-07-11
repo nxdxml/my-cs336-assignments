@@ -30,3 +30,13 @@ wget https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinySto
 Invoke-WebRequest -Uri "https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinyStoriesV2-GPT4-train.txt" -OutFile "TinyStoriesV2-GPT4-train.txt"
 Invoke-WebRequest -Uri "https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinyStoriesV2-GPT4-valid.txt" -OutFile "TinyStoriesV2-GPT4-valid.txt"
 ```
+
+运行单个测试文件
+```
+uv run pytest tests/test_tokenizer.py
+```
+
+Python 不允许脚本文件使用相对导入，除非它被当作模块运行。使用指定PYTHONPATH+绝对导入
+```
+$env:PYTHONPATH = "."; uv run cs336_basics/BPETokenizer.py
+```

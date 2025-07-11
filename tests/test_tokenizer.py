@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import os
-import resource
 import sys
+# dl windows平台导入这个会报错
+if sys.platform != "win32":
+    import resource
 
 import psutil
 import pytest
@@ -444,6 +446,9 @@ def test_encode_memory_usage():
     with open(FIXTURES_PATH / "tinystories_sample_5M.txt") as f:
         contents = f.read()
         _ = _encode(tokenizer, contents)
+
+
+
 
 
 @memory_limit(int(1e6))
