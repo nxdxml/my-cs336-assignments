@@ -9,7 +9,7 @@ import numpy.typing as npt
 import torch
 from torch import Tensor
 
-from cs336_basics.BPETokenizer import train_bpe
+from cs336_basics.BPETokenizer import train_bpe, BEPTokenizer
 
 
 def run_linear(
@@ -538,7 +538,7 @@ def run_load_checkpoint(
     """
     raise NotImplementedError
 
-
+# done
 def get_tokenizer(
     vocab: dict[int, bytes],
     merges: list[tuple[bytes, bytes]],
@@ -561,9 +561,10 @@ def get_tokenizer(
     """
 
     # 1 实现一个BPE分词器
-    raise NotImplementedError
+    return BEPTokenizer(vocab, merges, special_tokens)
+    # raise NotImplementedError
 
-
+# done
 def run_train_bpe(
     input_path: str | os.PathLike,
     vocab_size: int,

@@ -1,6 +1,6 @@
 import os
 from tests.common import FIXTURES_PATH
-from typing import BinaryIO
+from typing import BinaryIO, Iterable, Iterator
 # 多线程相关
 from multiprocessing import Process, Queue
 import regex as re
@@ -11,6 +11,56 @@ from collections import defaultdict
 
 # test
 from tests.common import gpt2_bytes_to_unicode
+# from tests.test_tokenizer import get_tokenizer_from_vocab_merges_path
+
+
+
+
+
+
+VOCAB_PATH = "C:\\Users\\asus\\Desktop\\cuda\\source\\assignment1-basics\\tests\\fixtures\\gpt2_vocab.json"
+MERGES_PATH = "C:\\Users\\asus\\Desktop\\cuda\\source\\assignment1-basics\\tests\\fixtures\\gpt2_merges.txt"
+
+
+import json
+def get_tokenizer_from_vocab_merges_path(
+    vocab_path: str | os.PathLike,
+    merges_path: str | os.PathLike,
+    special_tokens: list[str] | None = None,
+):
+    gpt2_byte_decoder = {v: k for k, v in gpt2_bytes_to_unicode().items()}
+    with open(vocab_path, encoding='utf-8') as vocab_f:
+        gpt2_vocab = json.load(vocab_f)
+    gpt2_bpe_merges = []
+    with open(merges_path, encoding='utf-8') as f:
+        for line in f:
+            cleaned_line = line.rstrip()
+            if cleaned_line and len(cleaned_line.split(" ")) == 2:
+                gpt2_bpe_merges.append(tuple(cleaned_line.split(" ")))
+    # The GPT-2 tokenizer uses a remapped unicode encoding for bytes. Let's
+    # just return the original bytes, so we don't force students to use
+    # any particular encoding scheme.
+    vocab = {
+        gpt2_vocab_index: bytes([gpt2_byte_decoder[token] for token in gpt2_vocab_item])
+        for gpt2_vocab_item, gpt2_vocab_index in gpt2_vocab.items()
+    }
+    # If any of the special tokens don't exist in the vocab, append them to the vocab.
+    if special_tokens:
+        for special_token in special_tokens:
+            byte_encoded_special_token = special_token.encode("utf-8")
+            if byte_encoded_special_token not in set(vocab.values()):
+                vocab[len(vocab)] = byte_encoded_special_token
+
+    merges = [
+        (
+            bytes([gpt2_byte_decoder[token] for token in merge_token_1]),
+            bytes([gpt2_byte_decoder[token] for token in merge_token_2]),
+        )
+        for merge_token_1, merge_token_2 in gpt2_bpe_merges
+    ]
+    return BEPTokenizer(vocab, merges, special_tokens)
+
+
 
 def find_chunk_boundaries(
     file: BinaryIO, 
@@ -61,6 +111,55 @@ def find_chunk_boundaries(
     # Make sure all boundaries are unique, but might be fewer than desired_num_chunks
     return sorted(set(chunk_boundaries))
 
+# TODO 这里可以增加代码的一些服用
+def pretokenizer(
+        chunk : str,
+        special_tokens: list[str],
+        ) -> list[bytes]:
+    """_summary_
+
+    Args:
+        chunk (str): 输入字符
+        special_tokens (list[str]): 特殊字符
+
+    Returns:
+        list[bytes]: 预处理后的字符串
+    """    """
+    pretokenizer
+    """
+    # 1. "xxx|special_tokens[i]|yyy" ->  ["xxx","special_tokens[i]","yyy"]
+    if not special_tokens : 
+        pretoken_split_special_list = [chunk]
+    else :
+        sorted_special_token = sorted(special_tokens, key=len, reverse=True)
+        # 输入["<|endoftext|>", "<|pad|>"]
+        # 输出['<\\|endoftext\\|>', '<\\|pad\\|>']
+        # 转义避免识别到一些特殊字符
+        pattern = "|".join(map(re.escape, sorted_special_token))
+        # 正则小知识，不用括号抱住会把pattern丢弃
+        # re.split("abc", "123abc456")
+        # ['123', '456']
+        pretoken_split_special_list = re.split(f"({pattern})", chunk)
+    
+    # 2 pretokenization
+    GPT2_TOKENIZER_REGEX = \
+    r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+    tokens = []
+
+    for part in pretoken_split_special_list:
+        if part in special_tokens:
+            # 这里训练的时候不能加进去
+            # continue
+            # 很坑这里要弄成utf-8
+            tokens.append(part.encode('utf-8'))
+        else :
+            # 找到所有匹配串
+            str_token = re.findall(GPT2_TOKENIZER_REGEX, part)
+            # 全部加入tokens中
+            tokens.extend(c.encode('utf-8') for c in str_token)
+    
+    # 直接返回
+    return tokens
 
 def worker(
         chunk : str,
@@ -197,7 +296,10 @@ def train_bpe(
     for part in results:
         for token in part:
             tokens.append(token)
-        
+
+    # print(tokens)
+    # print(type(tokens), type(tokens[0]), tokens[0])
+    
     # print(len(tokens))
     # print(tokens[0:500])
     # 小规模测试
@@ -214,6 +316,7 @@ def train_bpe(
     
     for i, token in enumerate(tokens):
         for index1, index2 in zip(token, token[1:]):
+            # print(f'{index1},{index2}')
             counts[index1, index2] += 1
             index_map[index1, index2].add(i)
 
@@ -224,71 +327,196 @@ def train_bpe(
     base_idx = 256 + len(special_tokens)
     num_merge = vocab_size - base_idx
     for i in range(num_merge):
+        # len(token) 长度固定
+        # 
+        # 找出出现最多次的idx对
+        # print(type(tokens), type(tokens[0]), tokens[0], len(tokens))
+        # <class 'list'> <class 'bytes'> b'iron' 27758
+        # ...
+        # <class 'list'> <class 'bytes'> b'iron' 27758
+        # <class 'list'> <class 'list'> [105, 114, 274] 27758
+        # <class 'list'> <class 'list'> [105, 114, 274] 27758
+        # <class 'list'> <class 'list'> [105, 114, 274] 27758
         most_common = max(
             counts.items(),
             key=lambda x:(
-                x[1],
-                vocab[x[0][0]].decode('utf-8', errors="ignore"),
-                vocab[x[0][1]].decode('utf-8', errors="ignore"),
+                x[1], # 次数优先
+                vocab[x[0][0]].decode('utf-8', errors="ignore"), # token1字典序
+                vocab[x[0][1]].decode('utf-8', errors="ignore"), # token2字典序
             )
         )[0]
         idx_a , idx_b = most_common
         new_token_id = base_idx + i
         new_token_bytes = vocab[idx_a] + vocab[idx_b]
+        # 更新词表merge
         vocab[new_token_id] = new_token_bytes
         merges.append((vocab[idx_a], vocab[idx_b]))
 
-        # merge() TODO 这部分研究一下数据结构
+        # merge() 这部分研究一下数据结构
+        # 包含最大的token id的set
         index_set = index_map[most_common]
 
         # print(type(tokens))
 
         for x in index_set:
+            # 这个idx对在token中出现的位置
             pretoken = tokens[x]
-            new_pretoken = []
+            # print(tokens[x], len(tokens[x]), most_common)
+            # b' Key' 4
+            # [32, 75, 494, 111] 4
+            # [289, 393, 114, 650, 472] 5
+            # [99, 274, 319, 114, 650, 296] 6
+            new_token = []
 
-            pos_list = []   # Store positions of max_pair for each new pretoken after merge
-            pos = 0
-            j = 0
 
             # Replace max_pair with new_index in each pretoken
+
+            # print(type(tokens[0]))
+            # print(len(pretoken))
+            
+            # 当前list如果发现目标对则替换，否则用原来的
+            # 在新的list中记录哪些是新merge的
+
+            pos_list = [] # 被替换的pair在new_token中的位置
+            pos = 0
+            j = 0
             while j < len(pretoken):
                 if (j < len(pretoken)-1) and ((pretoken[j], pretoken[j+1]) == most_common):
-                    new_pretoken.append(new_token_id)
+                    # print(pretoken, pretoken[j], pretoken[j+1], ((pretoken[j], pretoken[j+1]) == most_common))
+                    new_token.append(new_token_id)
                     pos_list.append(pos)
                     j += 2
                 else:
-                    new_pretoken.append(pretoken[j])
+                    new_token.append(pretoken[j])
                     j += 1
                 pos += 1
 
-            # Update counts and index_dict
+            # 更新数据结构
+            # [10, 11, 12, 13]
+            # [10, 300, 13]
+            # 减掉旧 pair (11, 12)
+            # 减掉旧 pair (10, 11) 和 (12, 13)
+            # 增加新 pair (10, 300) 和 (300, 13)
             for pos in pos_list:
-                counts[most_common] -= 1
+                counts[most_common] -= 1  # 减少当前被合并的pair计数
 
+                # 处理左侧邻居
                 if pos > 0:
-                    if new_pretoken[pos-1] == new_token_id:
-                        counts[(most_common[1], most_common[0])] -= 1    
+                    left = new_token[pos - 1]
+                    if left == new_token_id:
+                        counts[(most_common[1], most_common[0])] -= 1
                     else:
-                        counts[(new_pretoken[pos-1], most_common[0])] -= 1
+                        counts[(left, most_common[0])] -= 1
+                    
+                    counts[(left, new_token[pos])] += 1
+                    index_map[(left, new_token[pos])].add(x)
 
-                    counts[(new_pretoken[pos-1], new_pretoken[pos])] += 1
-                    index_map[(new_pretoken[pos-1], new_pretoken[pos])].add(x)
-
-                if pos < len(new_pretoken)-1:
-                    if new_pretoken[pos+1] == new_token_id:
-                        counts[(most_common[1], most_common[0])] -= 1     
+                # 处理右侧邻居
+                if pos < len(new_token) - 1:
+                    right = new_token[pos + 1]
+                    if right == new_token_id:
+                        counts[(most_common[1], most_common[0])] -= 1
                     else:
-                        counts[(most_common[1], new_pretoken[pos+1])] -= 1
+                        counts[(most_common[1], right)] -= 1
+                    
+                    counts[(new_token[pos], right)] += 1
+                    index_map[(new_token[pos], right)].add(x)
 
-                    counts[(new_pretoken[pos], new_pretoken[pos+1])] += 1
-                    index_map[(new_pretoken[pos], new_pretoken[pos+1])].add(x)
-
-            tokens[x] = new_pretoken
+            tokens[x] = new_token
 
 
     return vocab, merges
 
+
+
+class BEPTokenizer:
+    def __init__(self,
+        vocab: dict[int, bytes],
+        merges: list[tuple[bytes, bytes]],
+        special_tokens: list[str] | None = None,
+    ) -> None :
+        self.vocab = vocab
+        self.merges = merges
+        self.special_tokens = special_tokens or []
+        self.r_vocab =  {v:k for k,v in self.vocab.items()}
+        self.b_special_tokens = [x.encode('utf-8') for x in self.special_tokens]
+        # print(self.b_special_tokens)
+
+    def encode(self, text : str) -> list[int]:
+
+        pre_tokens = pretokenizer(text, self.special_tokens) # list[bytes]
+        tokens = [] # list[list[int]]
+        for i, pre_token in enumerate(pre_tokens):
+            new_token = []
+            # print(i, pre_token)
+            if pre_token in self.b_special_tokens:
+                new_token.append(self.r_vocab[pre_token])
+                # print(i, pre_token)
+            else :
+                for x in pre_token:
+                    # 这里之前写错了直接写了字符的ASCII码进去。。
+                    new_token.append(self.r_vocab[bytes([x])])
+            tokens.append(new_token)
+
+        # print(tokens)
+
+        # 不知为啥这里正向应用一遍merge就行了，很奇怪，可能和训练严格按照顺序有关？
+        for i, token in enumerate(tokens):
+            for merge in self.merges:
+                new_token = []
+                new_id = self.r_vocab[merge[0] + merge[1]]
+                j = 0
+                while j < len(token):
+                    # 匹配
+                    if j < len(token) - 1 and (self.vocab[token[j]],self.vocab[token[j + 1]]) == merge:
+                        new_token.append(new_id)
+                        j += 2
+                    else :
+                        new_token.append(token[j])
+                        j += 1
+                token = new_token
+            tokens[i] = token
+        # 展开
+        flat_tokens = []
+        for token in tokens:
+            for x in token:
+                flat_tokens.append(x)
+        return flat_tokens
+    # TODO 这个函数不知道干啥的，可能是循环调用encode，学一下
+    def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
+        """Given an iterable of strings (e.g., a Python file handle), 
+        return a generator that lazily yields token IDs. 
+        This is required for memory-eﬀicient tokenization of large files 
+        that we cannot directly load into memory.
+        """
+        for line in iterable:
+            for idx in self.encode(line):
+                yield idx
+
+    # def decode(self, ids: list[int]) -> str:
+    #     """Decode a sequence of token IDs into text."""
+    #     tokens = bytes()
+    #     vocab_size = len(self.vocab)
+    #     replacement_char = "\uFFFD"
+
+    #     for token_id in ids:
+    #         if token_id < vocab_size:
+    #             token = self.vocab[token_id]    # bytes
+    #         else:
+    #             token = bytes(replacement_char, encoding='utf-8')   # Replace tokens with Unicode replacement characters if index out of bounds
+
+    #         tokens += token
+    #     decoded = tokens.decode(encoding='utf-8', errors='replace')
+
+    #     return decoded 
+    
+    def decode(self, ids : list[int]) -> str :
+        tokens = bytes()
+        for id in ids:
+            tokens += self.vocab[id]
+        # 这里不加error有问题
+        return tokens.decode(encoding='utf-8', errors='replace')
+        
 
 
 
@@ -304,6 +532,27 @@ def main():
         vocab_size=1000,
         special_tokens=["<|endoftext|>"],
     )
+
+    bpe_tokenizer = BEPTokenizer(vocab, merges, special_tokens=["<|endoftext|>"])
+
+    test_str = "u don't have to be scared of the loud dog <|endoftext|>"
+    test_str = "s"
+    output = bpe_tokenizer.encode(test_str)
+    print(f'编码输出{output}')
+    d_str = bpe_tokenizer.decode(output)
+    print(f'解码后字符串{d_str}')
+    assert test_str == d_str
+
+
+    tokenizer = get_tokenizer_from_vocab_merges_path(
+        vocab_path=VOCAB_PATH,
+        merges_path=MERGES_PATH,
+    )
+    output = tokenizer.encode(test_str)
+    print(f'编码输出{output}')
+    d_str = tokenizer.decode(output)
+    print(f'解码后字符串{d_str}')
+
     # reference_vocab_path = "C:\\Users\\asus\\Desktop\\cuda\\source\\assignment1-basics\\tests\\fixtures\\train-bpe-reference-vocab.json"
     # reference_merges_path = "C:\\Users\\asus\\Desktop\\cuda\\source\\assignment1-basics\\tests\\fixtures\\train-bpe-reference-merges.txt"
 
@@ -321,7 +570,7 @@ def main():
     #     ]
     # print(reference_merges)
     # print(merges)
-    print(vocab)
+    # print(vocab)
 
 if __name__ == "__main__":
     main()
