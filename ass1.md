@@ -34,6 +34,7 @@ Invoke-WebRequest -Uri "https://huggingface.co/datasets/roneneldan/TinyStories/r
 运行单个测试文件
 ```
 uv run pytest tests/test_tokenizer.py
+uv run pytest tests/test_tokenizer.py::test_roundtrip_single_character
 ```
 
 Python 不允许脚本文件使用相对导入，除非它被当作模块运行。使用指定PYTHONPATH+绝对导入
