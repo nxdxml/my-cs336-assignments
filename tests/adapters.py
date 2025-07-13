@@ -10,7 +10,7 @@ import torch
 from torch import Tensor
 
 from cs336_basics.BPETokenizer import train_bpe, BEPTokenizer
-
+from cs336_basics.Linear import Linear
 
 def run_linear(
     d_in: int,
@@ -30,8 +30,16 @@ def run_linear(
     Returns:
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
+    my_linear = Linear(d_in, d_out)
+    
+    # 错误写法
+    # my_linear.W = weights.T
+    # PyTorch禁止直接将普通Tensor赋值给Parameter（会抛出TypeError）
+    with torch.no_grad():
+        my_linear.W.copy_(weights.T)  # 转置并复制到参数中
 
-    raise NotImplementedError
+    output = my_linear(in_features)
+    return output
 
 
 def run_embedding(
