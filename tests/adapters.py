@@ -14,6 +14,8 @@ from cs336_basics.Linear import Linear
 from cs336_basics.Embedding import Embedding
 from cs336_basics.RMSnorm import RMSnorm
 from cs336_basics.SwiGLU import SwiGLU
+from cs336_basics.Rope import Rope
+
 # done 
 def run_linear(
     d_in: int,
@@ -205,7 +207,7 @@ def run_multihead_self_attention_with_rope(
     """
     raise NotImplementedError
 
-# TODO
+# done
 def run_rope(
     d_k: int,
     theta: float,
@@ -225,7 +227,12 @@ def run_rope(
     Returns:
         Float[Tensor, " ... sequence_length d_k"]: Tensor with RoPEd input.
     """
-    raise NotImplementedError
+
+    my_rope = Rope(theta=theta, d_k=d_k, max_seq_len=max_seq_len)
+    output = my_rope(in_query_or_key, token_positions)
+
+
+    return output
 
 
 def run_transformer_block(
@@ -300,7 +307,7 @@ def run_transformer_block(
     """
     raise NotImplementedError
 
-
+# TODO
 def run_transformer_lm(
     vocab_size: int,
     context_length: int,
@@ -312,9 +319,7 @@ def run_transformer_lm(
     weights: dict[str, Tensor],
     in_indices: Int[Tensor, " batch_size sequence_length"],
 ) -> Float[Tensor, " batch_size sequence_length vocab_size"]:
-    """Given the weights of a Transformer language model and input indices,
-    return the output of running a forward pass on the input indices.
-
+    """Given the weights of a Transformer language model and input indices,return the output of running a forward pass on the input indices.
     This function should use RoPE.
 
     Args:
