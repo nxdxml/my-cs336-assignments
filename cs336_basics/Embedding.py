@@ -59,6 +59,7 @@ class Embedding(nn.Module):
         """        
         batch_size, sequence_length = token_id.shape
         output = torch.empty(batch_size, sequence_length, self.embedding_dim)
+        # TODO 向量化操作
         for i, seq in enumerate(token_id):
             for j, id in enumerate(seq):
                 output[i][j] = self.W[id]
