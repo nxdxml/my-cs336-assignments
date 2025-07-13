@@ -12,7 +12,8 @@ from torch import Tensor
 from cs336_basics.BPETokenizer import train_bpe, BEPTokenizer
 from cs336_basics.Linear import Linear
 from cs336_basics.Embedding import Embedding
-
+from cs336_basics.RMSnorm import RMSnorm
+from cs336_basics.SwiGLU import SwiGLU
 # done 
 def run_linear(
     d_in: int,
@@ -43,7 +44,7 @@ def run_linear(
     output = my_linear(in_features)
     return output
 
-
+# done
 def run_embedding(
     vocab_size: int,
     d_model: int,
@@ -69,7 +70,7 @@ def run_embedding(
     output = my_embedding(token_ids)
     return output
 
-
+# done
 def run_swiglu(
     d_model: int,
     d_ff: int,
@@ -99,7 +100,15 @@ def run_swiglu(
     # swiglu.w1.weight.data = w1_weight
     # swiglu.w2.weight.data = w2_weight
     # swiglu.w3.weight.data = w3_weight
-    raise NotImplementedError
+    swiglu = SwiGLU(d_model=d_model, d_ff=d_ff)
+    with torch.no_grad():
+        swiglu.w1.W.copy_(w1_weight.T)
+        swiglu.w2.W.copy_(w2_weight.T)
+        swiglu.w3.W.copy_(w3_weight.T)
+
+    output = swiglu(in_features)
+
+    return output
 
 
 def run_scaled_dot_product_attention(
@@ -196,7 +205,7 @@ def run_multihead_self_attention_with_rope(
     """
     raise NotImplementedError
 
-
+# TODO
 def run_rope(
     d_k: int,
     theta: float,
@@ -373,7 +382,7 @@ def run_transformer_lm(
     """
     raise NotImplementedError
 
-
+# done
 def run_rmsnorm(
     d_model: int,
     eps: float,
@@ -394,7 +403,14 @@ def run_rmsnorm(
         Float[Tensor,"... d_model"]: Tensor of with the same shape as `in_features` with the output of running
         RMSNorm of the `in_features`.
     """
-    raise NotImplementedError
+    
+    my_RMSnorm = RMSnorm(d_model=d_model, eps=eps)
+    with torch.no_grad():
+        my_RMSnorm.g.copy_(weights)
+        
+    output = my_RMSnorm(in_features)
+    return output
+    # raise NotImplementedError
 
 
 def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
