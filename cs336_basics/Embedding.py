@@ -57,10 +57,11 @@ class Embedding(nn.Module):
         Returns:
             torch.Tensor: 查询结果 (batch_size, sequence_length, vocab_size)
         """        
-        batch_size, sequence_length = token_id.shape
-        output = torch.empty(batch_size, sequence_length, self.embedding_dim)
         # TODO 向量化操作
-        for i, seq in enumerate(token_id):
-            for j, id in enumerate(seq):
-                output[i][j] = self.W[id]
+        # batch_size, sequence_length = token_id.shape
+        # output = torch.empty(batch_size, sequence_length, self.embedding_dim)
+        # for i, seq in enumerate(token_id):
+        #     for j, id in enumerate(seq):
+        #         output[i][j] = self.W[id]
+        output = self.W[token_id]
         return output
