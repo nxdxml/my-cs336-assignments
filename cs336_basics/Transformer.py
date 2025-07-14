@@ -1,8 +1,8 @@
 from cs336_basics.RMSnorm import RMSnorm
 from cs336_basics.Attention import MultiheadSelfAttention
+from cs336_basics.SwiGLU import SwiGLU
 import torch
 from torch import nn
-
 
 class Transformer(nn.Module):
     def __init__(self,
@@ -11,7 +11,6 @@ class Transformer(nn.Module):
                     d_ff: int,
                     max_seq_len: int,
                     theta: float,
-                    weights: dict,
                  ):
         """
 
@@ -61,3 +60,23 @@ class Transformer(nn.Module):
                     Shape is (d_model,).
         """        
         super().__init__()
+
+        self.rms_norm1 = RMSnorm(d_model=d_model)
+
+        self.multi_head_attn = MultiheadSelfAttention(
+            d_model=d_model,
+            num_head=num_heads,
+            apply_rope=True,
+            max_seq_len=max_seq_len,
+            theta=theta,
+        )
+
+        self.rms_norm2 = RMSnorm(d_model=d_model)
+
+        self.swiglu = SwiGLU(d_model=d_model, d_ff=d_ff)
+
+    def forward(self, x : torch.Tensor) -> torch.Tensor:
+        y = x + self.multi_head_attn(self.rms_norm1(x))
+        output = y + self.swiglu(self.rms_norm2(y))
+
+        return output

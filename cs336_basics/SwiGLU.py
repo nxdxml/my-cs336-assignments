@@ -1,6 +1,11 @@
 import torch
 from torch import nn
 from cs336_basics.Linear import Linear
+
+def silu(x : torch.Tensor):
+    return x * torch.sigmoid(x)
+
+
 class SwiGLU(nn.Module):
     def __init__(self,
                     d_model: int,
