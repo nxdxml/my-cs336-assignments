@@ -15,7 +15,7 @@ from cs336_basics.Embedding import Embedding
 from cs336_basics.RMSnorm import RMSnorm
 from cs336_basics.SwiGLU import SwiGLU
 from cs336_basics.Rope import Rope
-from cs336_basics.Attention import softmax, scaled_dot_product_attention
+from cs336_basics.Attention import softmax, scaled_dot_product_attention, MultiheadSelfAttention
 
 # done 
 def run_linear(
@@ -42,7 +42,7 @@ def run_linear(
     # my_linear.W = weights.T
     # PyTorch禁止直接将普通Tensor赋值给Parameter（会抛出TypeError）
     with torch.no_grad():
-        my_linear.W.copy_(weights.T)  # 转置并复制到参数中
+        my_linear.W.copy_(weights)  # 转置并复制到参数中
 
     output = my_linear(in_features)
     return output
@@ -105,9 +105,9 @@ def run_swiglu(
     # swiglu.w3.weight.data = w3_weight
     swiglu = SwiGLU(d_model=d_model, d_ff=d_ff)
     with torch.no_grad():
-        swiglu.w1.W.copy_(w1_weight.T)
-        swiglu.w2.W.copy_(w2_weight.T)
-        swiglu.w3.W.copy_(w3_weight.T)
+        swiglu.w1.W.copy_(w1_weight)
+        swiglu.w2.W.copy_(w2_weight)
+        swiglu.w3.W.copy_(w3_weight)
 
     output = swiglu(in_features)
 
@@ -134,7 +134,7 @@ def run_scaled_dot_product_attention(
     """
     return scaled_dot_product_attention(Q=Q, K=K, V=V, mask=mask)
 
-
+# done
 def run_multihead_self_attention(
     d_model: int,
     num_heads: int,
@@ -158,7 +158,7 @@ def run_multihead_self_attention(
         max_seq_len (int): Maximum sequence length to pre-cache if your implementation does that.
         q_proj_weight (Float[Tensor, "d_k d_in"]): Weights for the Q projection
         k_proj_weight (Float[Tensor, "d_k d_in"]): Weights for the K projection
-        v_proj_weight (Float[Tensor, "d_k d_in"]): Weights for the V projection
+        v_proj_weight (Float[Tensor, "d_v d_in"]): Weights for the V projection
         o_proj_weight (Float[Tensor, "d_model d_v"]): Weights for the output projection
         in_features (Float[Tensor, "... sequence_length d_in"]): Tensor to run your implementation on.
 
@@ -166,7 +166,16 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    my_multihead_self_attention = MultiheadSelfAttention(d_model=d_model, num_head=num_heads)
+    with torch.no_grad():
+        my_multihead_self_attention.Q_proj.W.copy_(q_proj_weight)
+        my_multihead_self_attention.K_proj.W.copy_(k_proj_weight)
+        my_multihead_self_attention.V_proj.W.copy_(v_proj_weight)
+        my_multihead_self_attention.O_proj.W.copy_(o_proj_weight)
+
+    output = my_multihead_self_attention(in_features)
+
+    return output
 
 
 def run_multihead_self_attention_with_rope(
@@ -308,7 +317,7 @@ def run_transformer_block(
     """
     raise NotImplementedError
 
-# TODO
+
 def run_transformer_lm(
     vocab_size: int,
     context_length: int,
