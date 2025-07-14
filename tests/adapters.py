@@ -16,7 +16,7 @@ from cs336_basics.RMSnorm import RMSnorm
 from cs336_basics.SwiGLU import SwiGLU, silu
 from cs336_basics.Rope import Rope
 from cs336_basics.Attention import softmax, scaled_dot_product_attention, MultiheadSelfAttention
-from cs336_basics.Transformer import Transformer
+from cs336_basics.Transformer import Transformer, TransformerLM
 
 
 # done 
@@ -436,7 +436,36 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+
+    transformer_lm = TransformerLM(
+        vocab_size=vocab_size,
+        context_length=context_length,
+        d_model=d_model,
+        num_layers=num_layers,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        rope_theta=rope_theta,
+    )
+    with torch.no_grad():
+        transformer_lm.embedding.W.copy_(weights["token_embeddings.weight"])
+
+        for i in range(num_layers):
+            transformer_lm.layers[i].multi_head_attn.Q_proj.W.copy_(weights[f"layers.{i}.attn.q_proj.weight"])
+            transformer_lm.layers[i].multi_head_attn.K_proj.W.copy_(weights[f"layers.{i}.attn.k_proj.weight"])
+            transformer_lm.layers[i].multi_head_attn.V_proj.W.copy_(weights[f"layers.{i}.attn.v_proj.weight"])
+            transformer_lm.layers[i].multi_head_attn.O_proj.W.copy_(weights[f"layers.{i}.attn.output_proj.weight"])
+
+            transformer_lm.layers[i].rms_norm1.g.copy_(weights[f"layers.{i}.ln1.weight"])
+            transformer_lm.layers[i].rms_norm2.g.copy_(weights[f"layers.{i}.ln2.weight"])
+
+            transformer_lm.layers[i].swiglu.w1.W.copy_(weights[f"layers.{i}.ffn.w1.weight"])
+            transformer_lm.layers[i].swiglu.w2.W.copy_(weights[f"layers.{i}.ffn.w2.weight"])
+            transformer_lm.layers[i].swiglu.w3.W.copy_(weights[f"layers.{i}.ffn.w3.weight"])
+
+        transformer_lm.rms_norm.g.copy_(weights["ln_final.weight"])
+        transformer_lm.ln_out.W.copy_(weights["lm_head.weight"])
+
+    return transformer_lm(in_indices)
 
 # done
 def run_rmsnorm(
