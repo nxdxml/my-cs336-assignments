@@ -3,6 +3,8 @@ from einops import einsum, rearrange
 import math
 from torch import nn
 from cs336_basics.Linear import Linear
+from cs336_basics.Rope import Rope
+
 
 def softmax(x : torch.Tensor, dim : int) -> torch.Tensor:
     """softmax
@@ -54,8 +56,11 @@ class MultiheadSelfAttention(nn.Module):
     def __init__(self,
                  d_model : int, 
                  num_head : int, 
+                 apply_rope : bool = False,
+                 max_seq_len: int | None = None,
+                 theta: float | None = None,
                  ):
-        """多头注意力
+        """多头注意力,可以实现rope
 
         Args:
             d_model (int): Dimensionality of the feedforward input and output.
@@ -73,8 +78,13 @@ class MultiheadSelfAttention(nn.Module):
         self.O_proj = Linear(num_head * self.d_v, d_model)
 
 
+        self.apply_rope = apply_rope
+        if apply_rope is True:
+            self.rope = Rope(d_k=self.d_k, max_seq_len=max_seq_len, theta=theta)
 
-    def forward(self, x : torch.Tensor ) -> torch.Tensor:
+
+
+    def forward(self, x : torch.Tensor, token_positions : torch.Tensor | None = None) -> torch.Tensor:
         """
 
         Args:
@@ -92,6 +102,10 @@ class MultiheadSelfAttention(nn.Module):
         Q = rearrange(Q, "... seq (num_head d_k) -> ... num_head seq d_k", num_head = self.num_head)
         K = rearrange(K, "... seq (num_head d_k) -> ... num_head seq d_k", num_head = self.num_head)
         V = rearrange(V, "... seq (num_head d_v) -> ... num_head seq d_v", num_head = self.num_head)
+        # 加入rope，注意要在变换维度后对每个头分别做rope
+        if self.apply_rope:
+            Q = self.rope(Q, token_positions)
+            K = self.rope(K, token_positions)
         # tril取下三角
         causal_mask = torch.tril(torch.ones(seq_len, seq_len, device=x.device)).unsqueeze(0).unsqueeze(0)
 

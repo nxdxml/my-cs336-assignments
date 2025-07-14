@@ -64,6 +64,11 @@ class Rope(nn.Module):
         x0 = x[..., 0::2] # 0 2 4 6 ...
         x1 = x[..., 1::2] # 1 3 5 6 ...
 
+        # 如果为空则生成一个
+        seq_len = x.shape[-2]
+        if token_positions is None:
+            token_positions = torch.arange(seq_len, device=x.device)
+
         cos = self.cos[token_positions]
         sin = self.sin[token_positions]
 

@@ -13,9 +13,11 @@ from cs336_basics.BPETokenizer import train_bpe, BEPTokenizer
 from cs336_basics.Linear import Linear
 from cs336_basics.Embedding import Embedding
 from cs336_basics.RMSnorm import RMSnorm
-from cs336_basics.SwiGLU import SwiGLU
+from cs336_basics.SwiGLU import SwiGLU, silu
 from cs336_basics.Rope import Rope
 from cs336_basics.Attention import softmax, scaled_dot_product_attention, MultiheadSelfAttention
+from cs336_basics.Transformer import Transformer
+
 
 # done 
 def run_linear(
@@ -177,7 +179,7 @@ def run_multihead_self_attention(
 
     return output
 
-
+# done
 def run_multihead_self_attention_with_rope(
     d_model: int,
     num_heads: int,
@@ -191,6 +193,7 @@ def run_multihead_self_attention_with_rope(
     token_positions: Int[Tensor, " ... sequence_length"] | None = None,
 ) -> Float[Tensor, " ... sequence_length d_out"]:
     """
+    注意这里的d_k d_v 应该都是 d_k * num_head = d_model = d_in
     Given the key, query, and value projection weights of a naive unbatched
     implementation of multi-head attention, return the output of an optimized batched
     implementation. This implementation should handle the key, query, and value projections
@@ -206,7 +209,7 @@ def run_multihead_self_attention_with_rope(
         theta (float): RoPE parameter.
         q_proj_weight (Float[Tensor, "d_k d_in"]): Weights for the Q projection
         k_proj_weight (Float[Tensor, "d_k d_in"]): Weights for the K projection
-        v_proj_weight (Float[Tensor, "d_k d_in"]): Weights for the V projection
+        v_proj_weight (Float[Tensor, "d_v d_in"]): Weights for the V projection
         o_proj_weight (Float[Tensor, "d_model d_v"]): Weights for the output projection
         in_features (Float[Tensor, "... sequence_length d_in"]): Tensor to run your implementation on.
         token_positions (Int[Tensor, " ... sequence_length"] | None): Optional tensor with the positions of the tokens
@@ -215,7 +218,23 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    # 这里加入rope初始化参数
+    my_multihead_self_attention = MultiheadSelfAttention(d_model=d_model,
+                                                          num_head=num_heads,
+                                                          apply_rope=True,
+                                                          max_seq_len=max_seq_len,
+                                                          theta=theta)
+    with torch.no_grad():
+        my_multihead_self_attention.Q_proj.W.copy_(q_proj_weight)
+        my_multihead_self_attention.K_proj.W.copy_(k_proj_weight)
+        my_multihead_self_attention.V_proj.W.copy_(v_proj_weight)
+        my_multihead_self_attention.O_proj.W.copy_(o_proj_weight)
+
+    output = my_multihead_self_attention(in_features, token_positions)
+
+    return output
+
+    
 
 # done
 def run_rope(
@@ -244,7 +263,7 @@ def run_rope(
 
     return output
 
-
+# done
 def run_transformer_block(
     d_model: int,
     num_heads: int,
@@ -315,7 +334,29 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+
+    transformer = Transformer(d_model=d_model,
+                              num_heads=num_heads,
+                              d_ff=d_ff,
+                              max_seq_len=max_seq_len,
+                              theta=theta)
+
+    with torch.no_grad():
+        transformer.multi_head_attn.Q_proj.W.copy_(weights["attn.q_proj.weight"])
+        transformer.multi_head_attn.K_proj.W.copy_(weights["attn.k_proj.weight"])
+        transformer.multi_head_attn.V_proj.W.copy_(weights["attn.v_proj.weight"])
+        transformer.multi_head_attn.O_proj.W.copy_(weights["attn.output_proj.weight"])
+
+        transformer.rms_norm1.g.copy_(weights["ln1.weight"])
+        transformer.rms_norm2.g.copy_(weights["ln2.weight"])
+
+        transformer.swiglu.w1.W.copy_(weights["ffn.w1.weight"])
+        transformer.swiglu.w2.W.copy_(weights["ffn.w2.weight"])
+        transformer.swiglu.w3.W.copy_(weights["ffn.w3.weight"])
+
+    output = transformer(in_features)
+
+    return output
 
 
 def run_transformer_lm(
@@ -427,7 +468,7 @@ def run_rmsnorm(
     return output
     # raise NotImplementedError
 
-
+# done
 def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
     """Given a tensor of inputs, return the output of applying SiLU
     to each element.
@@ -439,7 +480,7 @@ def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
         Float[Tensor,"..."]: of with the same shape as `in_features` with the output of applying
         SiLU to each element.
     """
-    raise NotImplementedError
+    return silu(in_features)
 
 
 def run_get_batch(
