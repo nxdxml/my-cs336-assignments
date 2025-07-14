@@ -1,6 +1,8 @@
 import torch
-from einops import einsum
+from einops import einsum, rearrange
 import math
+from torch import nn
+from cs336_basics.Linear import Linear
 
 def softmax(x : torch.Tensor, dim : int) -> torch.Tensor:
     """softmax
@@ -48,3 +50,56 @@ def scaled_dot_product_attention(
     return output
 
 
+class MultiheadSelfAttention(nn.Module):
+    def __init__(self,
+                 d_model : int, 
+                 num_head : int, 
+                 ):
+        """多头注意力
+
+        Args:
+            d_model (int): Dimensionality of the feedforward input and output.
+            num_head (int): Number of heads to use in multi-headed attention.
+        """        
+        super().__init__()
+        self.d_model = d_model
+        self.num_head = num_head
+        self.d_k = d_model // num_head
+        self.d_v = self.d_k
+
+        self.Q_proj = Linear(d_model, num_head * self.d_k)
+        self.K_proj = Linear(d_model, num_head * self.d_k)
+        self.V_proj = Linear(d_model, num_head * self.d_v)
+        self.O_proj = Linear(num_head * self.d_v, d_model)
+
+
+
+    def forward(self, x : torch.Tensor ) -> torch.Tensor:
+        """
+
+        Args:
+            x (torch.Tensor): (Float[Tensor, "... sequence_length d_in"]): Tensor to run your implementation on.
+
+        Returns:
+            torch.Tensor: Float[Tensor, " ... sequence_length d_out"]
+        """ 
+        seq_len = x.shape[-2]
+        # [..., seq, (num_head * d_k)]           
+        Q = self.Q_proj(x);
+        K = self.K_proj(x);
+        V = self.V_proj(x);
+
+        Q = rearrange(Q, "... seq (num_head d_k) -> ... num_head seq d_k", num_head = self.num_head)
+        K = rearrange(K, "... seq (num_head d_k) -> ... num_head seq d_k", num_head = self.num_head)
+        V = rearrange(V, "... seq (num_head d_v) -> ... num_head seq d_v", num_head = self.num_head)
+        # tril取下三角
+        causal_mask = torch.tril(torch.ones(seq_len, seq_len, device=x.device)).unsqueeze(0).unsqueeze(0)
+
+        output = scaled_dot_product_attention(Q, K, V, mask=causal_mask)
+
+        output = rearrange(output, "... num_head seq d_v  -> ... seq (num_head d_v)")
+
+        output = self.O_proj(output)
+        
+        return output
+            

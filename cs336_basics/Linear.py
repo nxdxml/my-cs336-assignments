@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 class Linear(nn.Module):
-    """y=xW
+    """y=Wx
     """    
     # subclass nn.Module
     def __init__(self, 
@@ -21,7 +21,7 @@ class Linear(nn.Module):
         # construct and store your parameter as W (not WT) for memory ordering reasons
         # putting it in an nn.Parameter
         self.W = nn.Parameter(
-            torch.empty(in_features, out_features, device=device, dtype=dtype)
+            torch.empty(out_features, in_features, device=device, dtype=dtype)
         )
         # torch.nn.init.trunc_normal_ to initialize the weights.
         mean = 0
@@ -29,7 +29,7 @@ class Linear(nn.Module):
         nn.init.trunc_normal_(self.W, mean=mean, std=std, a=-3*std, b=3*std)
         
     def forward(self, x : torch.Tensor) -> torch.Tensor:
-        return x @ self.W
+        return x @ self.W.T
     
 
 
