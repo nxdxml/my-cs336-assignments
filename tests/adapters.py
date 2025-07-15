@@ -18,6 +18,7 @@ from cs336_basics.Rope import Rope
 from cs336_basics.Attention import softmax, scaled_dot_product_attention, MultiheadSelfAttention
 from cs336_basics.Transformer import Transformer, TransformerLM
 from cs336_basics.utils import cross_entropy
+from cs336_basics.AdamW import AdamW
 
 # done 
 def run_linear(
@@ -585,7 +586,7 @@ def get_adamw_cls() -> type[torch.optim.Optimizer]:
     """
     Returns a torch.optim.Optimizer that implements AdamW.
     """
-    raise NotImplementedError
+    return AdamW
 
 
 def run_get_lr_cosine_schedule(
