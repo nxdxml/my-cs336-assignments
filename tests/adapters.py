@@ -17,9 +17,9 @@ from cs336_basics.SwiGLU import SwiGLU, silu
 from cs336_basics.Rope import Rope
 from cs336_basics.Attention import softmax, scaled_dot_product_attention, MultiheadSelfAttention
 from cs336_basics.Transformer import Transformer, TransformerLM
-from cs336_basics.utils import cross_entropy, get_lr_cosine_schedule
+from cs336_basics.utils import cross_entropy, get_lr_cosine_schedule, gradient_clipping, get_batch
 from cs336_basics.AdamW import AdamW
-
+from cs336_basics.utils import save_checkpoint, load_checkpoint
 # done 
 def run_linear(
     d_in: int,
@@ -512,7 +512,7 @@ def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
     """
     return silu(in_features)
 
-
+# done
 def run_get_batch(
     dataset: npt.NDArray, batch_size: int, context_length: int, device: str
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -533,7 +533,12 @@ def run_get_batch(
         is the sampled input sequences, and the second tuple item is the corresponding
         language modeling labels.
     """
-    raise NotImplementedError
+    return get_batch(
+        dataset=dataset,
+        batch_size=batch_size,
+        context_length=context_length,
+        device=device,
+    )
 
 # done
 def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:
@@ -569,7 +574,7 @@ def run_cross_entropy(inputs: Float[Tensor, " batch_size vocab_size"], targets: 
     """
     return cross_entropy(inputs=inputs, targets=targets)
 
-
+# done
 def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
     """Given a set of parameters, clip their combined gradients to have l2 norm at most max_l2_norm.
 
@@ -579,7 +584,7 @@ def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm:
 
     The gradients of the parameters (parameter.grad) should be modified in-place.
     """
-    raise NotImplementedError
+    return gradient_clipping(parameters=parameters, max_l2_norm=max_l2_norm)
 
 # done
 def get_adamw_cls() -> type[torch.optim.Optimizer]:
@@ -620,7 +625,7 @@ def run_get_lr_cosine_schedule(
                                   warmup_iters=warmup_iters,
                                   cosine_cycle_iters=cosine_cycle_iters)
 
-
+# done
 def run_save_checkpoint(
     model: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
@@ -637,9 +642,14 @@ def run_save_checkpoint(
             we've completed.
         out (str | os.PathLike | BinaryIO | IO[bytes]): Path or file-like object to serialize the model, optimizer, and iteration to.
     """
-    raise NotImplementedError
+    return save_checkpoint(
+        model=model,
+        optimizer=optimizer,
+        iteration=iteration,
+        out=out,
+    )
 
-
+# done
 def run_load_checkpoint(
     src: str | os.PathLike | BinaryIO | IO[bytes],
     model: torch.nn.Module,
@@ -658,7 +668,11 @@ def run_load_checkpoint(
     Returns:
         int: the previously-serialized number of iterations.
     """
-    raise NotImplementedError
+    return load_checkpoint(
+        src=src,
+        model=model,
+        optimizer=optimizer,
+    )
 
 # done
 def get_tokenizer(
