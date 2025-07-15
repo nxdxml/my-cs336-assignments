@@ -17,7 +17,7 @@ from cs336_basics.SwiGLU import SwiGLU, silu
 from cs336_basics.Rope import Rope
 from cs336_basics.Attention import softmax, scaled_dot_product_attention, MultiheadSelfAttention
 from cs336_basics.Transformer import Transformer, TransformerLM
-from cs336_basics.utils import cross_entropy
+from cs336_basics.utils import cross_entropy, get_lr_cosine_schedule
 from cs336_basics.AdamW import AdamW
 
 # done 
@@ -581,14 +581,14 @@ def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm:
     """
     raise NotImplementedError
 
-
+# done
 def get_adamw_cls() -> type[torch.optim.Optimizer]:
     """
     Returns a torch.optim.Optimizer that implements AdamW.
     """
     return AdamW
 
-
+# done
 def run_get_lr_cosine_schedule(
     it: int,
     max_learning_rate: float,
@@ -614,7 +614,11 @@ def run_get_lr_cosine_schedule(
     Returns:
         Learning rate at the given iteration under the specified schedule.
     """
-    raise NotImplementedError
+    return get_lr_cosine_schedule(it=it,
+                                  max_learning_rate=max_learning_rate,
+                                  min_learning_rate=min_learning_rate,
+                                  warmup_iters=warmup_iters,
+                                  cosine_cycle_iters=cosine_cycle_iters)
 
 
 def run_save_checkpoint(
