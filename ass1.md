@@ -47,3 +47,9 @@ $env:PYTHONPATH = "."; uv run cs336_basics/BPETokenizer.py
 $env:PYTHONPATH = "."
 uv run cs336_basics\train.py
 ```
+
+参考
+环境问题参考
+https://blog.csdn.net/Humbunklung/article/details/146046406
+
+

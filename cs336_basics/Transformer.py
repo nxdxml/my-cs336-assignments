@@ -14,6 +14,7 @@ class Transformer(nn.Module):
                     d_ff: int,
                     max_seq_len: int,
                     theta: float,
+                    device: torch.device | str = "cpu", # 加入device
                  ):
         """
 
@@ -64,7 +65,7 @@ class Transformer(nn.Module):
         """        
         super().__init__()
 
-        self.rms_norm1 = RMSnorm(d_model=d_model)
+        self.rms_norm1 = RMSnorm(d_model=d_model, device=device)
 
         self.multi_head_attn = MultiheadSelfAttention(
             d_model=d_model,
@@ -72,13 +73,16 @@ class Transformer(nn.Module):
             apply_rope=True,
             max_seq_len=max_seq_len,
             theta=theta,
+            device=device, # 加入device
         )
 
-        self.rms_norm2 = RMSnorm(d_model=d_model)
+        self.rms_norm2 = RMSnorm(d_model=d_model, device=device)
 
-        self.swiglu = SwiGLU(d_model=d_model, d_ff=d_ff)
+        self.swiglu = SwiGLU(d_model=d_model, d_ff=d_ff, device=device)
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
+
+        # print(f"transformer {x.device}")
         y = x + self.multi_head_attn(self.rms_norm1(x))
         output = y + self.swiglu(self.rms_norm2(y))
 
@@ -95,6 +99,7 @@ class TransformerLM(nn.Module):
                     num_heads: int,
                     d_ff: int,
                     rope_theta: float,
+                    device: torch.device | str = "cpu", # 加入device
                  ):
         """Given the weights of a Transformer language model and input indices,return the output of running a forward pass on the input indices.
         This function should use RoPE.
@@ -164,7 +169,7 @@ class TransformerLM(nn.Module):
         """
         super().__init__()
 
-        self.embedding = Embedding(num_embeddings=vocab_size, embedding_dim=d_model)
+        self.embedding = Embedding(num_embeddings=vocab_size, embedding_dim=d_model,device=device)
 
 
         self.layers = nn.ModuleList(
@@ -174,13 +179,14 @@ class TransformerLM(nn.Module):
                 d_ff=d_ff,
                 max_seq_len=context_length,
                 theta=rope_theta,
+                device=device, # 加入device
             )
             for _ in range(num_layers)
         )
         
-        self.rms_norm = RMSnorm(d_model=d_model)
+        self.rms_norm = RMSnorm(d_model=d_model, device=device)
 
-        self.ln_out = Linear(d_model, vocab_size)
+        self.ln_out = Linear(d_model, vocab_size, device=device)
 
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
@@ -192,6 +198,7 @@ class TransformerLM(nn.Module):
         Returns:
             torch.Tensor: _description_
         """        
+        # print(f"transformerlm {x.device}") # transformerlm cuda:0
         x = self.embedding(x)
         for layer in self.layers:
             x = layer(x)

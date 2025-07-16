@@ -44,7 +44,7 @@ class Embedding(nn.Module):
         super().__init__()
         self.embedding_dim = embedding_dim
         self.W = nn.Parameter(
-            torch.empty(num_embeddings, embedding_dim)
+            torch.empty(num_embeddings, embedding_dim, device=device, dtype=dtype)
         )
         nn.init.trunc_normal_(self.W, mean=0, std=1, a=-3, b=3)
 

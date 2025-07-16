@@ -59,6 +59,7 @@ class MultiheadSelfAttention(nn.Module):
                  apply_rope : bool = False,
                  max_seq_len: int | None = None,
                  theta: float | None = None,
+                 device: torch.device | str = "cpu", # 解决设备问题
                  ):
         """多头注意力,可以实现rope
 
@@ -72,10 +73,10 @@ class MultiheadSelfAttention(nn.Module):
         self.d_k = d_model // num_head
         self.d_v = self.d_k
 
-        self.Q_proj = Linear(d_model, num_head * self.d_k)
-        self.K_proj = Linear(d_model, num_head * self.d_k)
-        self.V_proj = Linear(d_model, num_head * self.d_v)
-        self.O_proj = Linear(num_head * self.d_v, d_model)
+        self.Q_proj = Linear(d_model, num_head * self.d_k, device=device)
+        self.K_proj = Linear(d_model, num_head * self.d_k, device=device)
+        self.V_proj = Linear(d_model, num_head * self.d_v, device=device)
+        self.O_proj = Linear(num_head * self.d_v, d_model, device=device)
 
 
         self.apply_rope = apply_rope
@@ -95,6 +96,9 @@ class MultiheadSelfAttention(nn.Module):
         """ 
         seq_len = x.shape[-2]
         # [..., seq, (num_head * d_k)]           
+
+        # print(f"multi_atten{x.device}")
+
         Q = self.Q_proj(x);
         K = self.K_proj(x);
         V = self.V_proj(x);
