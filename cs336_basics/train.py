@@ -11,10 +11,14 @@ import time
 from tests.adapters import *
 import os
 import numpy as np
+
+
+from cs336_basics.inference import generate_text
+
 def main():
     # 1训练配置参数
-    train_epochs = 10000 # 训练步数
-    input_path = "C:\\Users\\asus\\Desktop\\cuda\\source\\assignment1-basics\\data\\TinyStoriesV2-GPT4-valid.txt"
+    train_epochs = 1000 # 训练步数
+    input_path = "C:\\Users\\asus\\Desktop\\cuda\\source\\assignment1-basics\\data\\TinyStoriesV2-GPT4-valid-mini.txt"
     vocab_size = 1000
     special_tokens = ["<|endoftext|>"]
     batch_size = 16
@@ -26,7 +30,7 @@ def main():
     d_ff = 4 * d_model 
     rope_theta = 10000
     checkpoint_path = "C:\\Users\\asus\\Desktop\\cuda\\source\\assignment1-basics\\cs336_basics\\checkpoint"
-    use_bpe = False # 是否需要使用bpe
+    use_bpe = True # 是否需要使用bpe
     dataset_path = "C:\\Users\\asus\\Desktop\\cuda\\source\\assignment1-basics\\data\\dataset.npy"
 
     # print(f"device = {device}")
@@ -81,8 +85,9 @@ def main():
     ).to(device)
     # 4优化器
     optimizer = AdamW(model.parameters())
-    for name, param in model.named_parameters():
-        print(f"{name}: {param.device}")
+    # 检查参数所在设备
+    # for name, param in model.named_parameters():
+    #     print(f"{name}: {param.device}")
 
     # 5展开训练
     model.train()
@@ -115,15 +120,26 @@ def main():
         if step % 100 == 0:
             print(f'正在进行第{step}轮训练')
             print(f'loss = {loss.item()}')
-            run_save_checkpoint(model=model,
-                            optimizer=optimizer,
-                            iteration=step,
-                            out=os.path.join(checkpoint_path, f"checkpoint_step{step}.pt"))
+            # run_save_checkpoint(model=model,
+            #                 optimizer=optimizer,
+            #                 iteration=step,
+            #                 out=os.path.join(checkpoint_path, f"checkpoint_step{step}.pt"))
         
 
 
     print("训练完成")
-
+    # 临时写一个推理代码
+    if use_bpe:
+        prompt_text = "Once upon a time"
+        prompt_tokens = torch.tensor(tokenizer.encode(prompt_text), dtype=torch.long)
+        generated_tokens = generate_text(
+            model=model,
+            tokenizer=tokenizer,
+            prompt_tokens=prompt_tokens,
+            context_length=context_length,
+        )
+        generated_text = tokenizer.decode(generated_tokens.tolist())
+        print(generated_text)
 
 if __name__ == "__main__":
     main()
