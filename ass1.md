@@ -1,3 +1,8 @@
+git clone后需要增加的操作
+1. 下载data
+2. 文件夹路径很多写死了，在一些文件的非官方测试代码和train.py的配置等地方
+3. 修改checkpoint dataset.npy等文件的保存路径
+
 安装uv管理环境
 参考 https://github.com/astral-sh/uv
 可能需要添加环境变量
