@@ -698,7 +698,6 @@ def get_tokenizer(
 
     # 1 实现一个BPE分词器
     return BEPTokenizer(vocab, merges, special_tokens)
-    # raise NotImplementedError
 
 # done
 def run_train_bpe(
@@ -730,4 +729,3 @@ def run_train_bpe(
     """
     return train_bpe(input_path, vocab_size, special_tokens)
 
-    # raise NotImplementedError
