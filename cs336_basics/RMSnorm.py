@@ -36,35 +36,47 @@ class RMSnorm(nn.Module):
         self.eps = eps
         self.d_model = d_model
         self.g = nn.Parameter(
-            torch.ones(d_model)
+            torch.ones(d_model, device=device, dtype=dtype)
         )
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        
+        # 计算每个位置的均方根
+        rms = torch.sqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)  # shape (..., 1)
+
+        # 归一化
+        x_normed = x / rms  # shape (..., d_model)
+
+        # 乘以可训练参数 g
+        output = x_normed * self.g  # 广播乘法，g形状(d_model,)自动广播
+
+        return output
     
-    def forward(self, x : torch.Tensor) -> torch.Tensor:
-        """RMSnorm前向过程
-        Args:
-            x (torch.Tensor): (batch_size, sequence_length, d_model)
+    # def forward(self, x : torch.Tensor) -> torch.Tensor:
+    #     """RMSnorm前向过程
+    #     Args:
+    #         x (torch.Tensor): (batch_size, sequence_length, d_model)
 
-        Returns:
-            torch.Tensor: (batch_size, sequence_length, d_model)
-        """        
+    #     Returns:
+    #         torch.Tensor: (batch_size, sequence_length, d_model)
+    #     """        
 
-        # You should upcast your input to torch.float32 to prevent overflow when you square the input.
-        in_dtype = x.dtype
-        x = x.to(torch.float32)
+    #     # You should upcast your input to torch.float32 to prevent overflow when you square the input.
+    #     in_dtype = x.dtype
+    #     x = x.to(torch.float32)
 
-        # RMSnorm here
-        batch_size, sequence_length, d_model = x.shape
-        result = torch.empty(batch_size, sequence_length, d_model)
-        for i, batch in enumerate(x):
-            for j, seq in enumerate(batch):
-                # 分母
-                d = 0
-                for k, a in enumerate(seq):
-                    d += a * a
-                d = (d / d_model + self.eps) ** 0.5
-                for k, a in enumerate(seq):
-                    result[i][j][k] = a / d * self.g[k]
+    #     # RMSnorm here
+    #     batch_size, sequence_length, d_model = x.shape
+    #     result = torch.empty(batch_size, sequence_length, d_model)
+    #     for i, batch in enumerate(x):
+    #         for j, seq in enumerate(batch):
+    #             # 分母
+    #             d = 0
+    #             for k, a in enumerate(seq):
+    #                 d += a * a
+    #             d = (d / d_model + self.eps) ** 0.5
+    #             for k, a in enumerate(seq):
+    #                 result[i][j][k] = a / d * self.g[k]
 
 
 
-        return result.to(in_dtype)
+    #     return result.to(in_dtype)
