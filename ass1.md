@@ -41,3 +41,9 @@ Python 不允许脚本文件使用相对导入，除非它被当作模块运行�
 ```
 $env:PYTHONPATH = "."; uv run cs336_basics/BPETokenizer.py
 ```
+
+训练
+```
+$env:PYTHONPATH = "."
+uv run cs336_basics\train.py
+```

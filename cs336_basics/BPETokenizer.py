@@ -250,7 +250,7 @@ def train_bpe(
 
     # 2 分块处理
     chunked_file_list = []
-    num_processes = 8
+    num_processes = 4
     with open(input_path, "rb") as f:
         boundaries = find_chunk_boundaries(
             f, num_processes, "<|endoftext|>".encode("utf-8"))
