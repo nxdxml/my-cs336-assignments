@@ -1,5 +1,16 @@
 # CS336 Spring 2025 Assignment 1: Basics
 
+本仓库是个人练习cs336的作业一相关代码，准备完成所有pytest并且对我感兴趣的部分写一下简单的学习文档
+### ✅ TODO List
+
+- [x] 跑通所有test
+- [x] bpe文档
+- [ ] model文档
+- [ ] profile文档
+- [ ] train_loop完善，缺少一些组件比如动态学习率，断点重训等
+---
+以下为原仓库内容，配置环境相关
+
 For a full description of the assignment, see the assignment handout at
 [cs336_spring2025_assignment1_basics.pdf](./cs336_spring2025_assignment1_basics.pdf)
 

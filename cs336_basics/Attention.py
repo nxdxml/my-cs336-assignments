@@ -4,6 +4,7 @@ import math
 from torch import nn
 from cs336_basics.Linear import Linear
 from cs336_basics.Rope import Rope
+import torch.cuda.nvtx as nvtx
 
 
 def softmax(x : torch.Tensor, dim : int) -> torch.Tensor:
@@ -23,6 +24,48 @@ def softmax(x : torch.Tensor, dim : int) -> torch.Tensor:
     x_exp = torch.exp(x_stable)
     output = x_exp / torch.sum(x_exp, dim=dim, keepdim=True)
     return output
+
+
+
+
+
+@nvtx.range("scaled dot product attention")
+def annotated_scaled_dot_product_attention(
+    Q: torch.Tensor,
+    K: torch.Tensor,
+    V: torch.Tensor,
+    mask: torch.Tensor | None = None,
+) -> torch.Tensor:
+    """Scaled Dot Product Attention with NVTX annotations for profiling.
+
+    Args:
+        Q (torch.Tensor): Float tensor of shape [..., queries, d_k]
+        K (torch.Tensor): Float tensor of shape [..., keys, d_k]
+        V (torch.Tensor): Float tensor of shape [..., values, d_v]
+        mask (torch.Tensor | None, optional): Optional mask tensor [..., queries, keys]
+
+    Returns:
+        torch.Tensor: Output tensor [..., queries, d_v]
+    """
+    d_k = Q.shape[-1]
+
+    with nvtx.range("computing attention scores"):
+        att_weight = einsum(Q, K, "... queries d_k, ... keys d_k -> ... queries keys") / math.sqrt(d_k)
+
+    if mask is not None:
+        with nvtx.range("applying mask"):
+            att_weight = att_weight.masked_fill(mask == 0, float("-inf"))
+
+    with nvtx.range("computing softmax"):
+        att_weight = softmax(att_weight, -1)
+
+    with nvtx.range("final matmul"):
+        output = att_weight @ V
+
+    return output
+
+
+
 
 
 def scaled_dot_product_attention(
@@ -113,7 +156,9 @@ class MultiheadSelfAttention(nn.Module):
         # tril取下三角
         causal_mask = torch.tril(torch.ones(seq_len, seq_len, device=x.device)).unsqueeze(0).unsqueeze(0)
 
-        output = scaled_dot_product_attention(Q, K, V, mask=causal_mask)
+        # 注释nvtx版本
+        output = annotated_scaled_dot_product_attention(Q, K, V, mask=causal_mask)
+        # output = scaled_dot_product_attention(Q, K, V, mask=causal_mask)
 
         output = rearrange(output, "... num_head seq d_v  -> ... seq (num_head d_v)")
 

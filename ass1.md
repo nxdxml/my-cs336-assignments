@@ -53,6 +53,12 @@ $env:PYTHONPATH = "."
 uv run cs336_basics\train.py
 ```
 
+
+benchmarking
+```
+uv run nsys profile -o .\data\result python .\cs336_basics\benchmarking.py
+```
+
 参考
 环境问题参考
 https://blog.csdn.net/Humbunklung/article/details/146046406
