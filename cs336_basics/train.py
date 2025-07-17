@@ -17,9 +17,9 @@ from cs336_basics.inference import generate_text
 
 def main():
     # 1训练配置参数
-    train_epochs = 1000 # 训练步数
+    train_epochs = 100 # 训练步数
     input_path = "C:\\Users\\asus\\Desktop\\cuda\\source\\assignment1-basics\\data\\TinyStoriesV2-GPT4-valid-mini.txt"
-    vocab_size = 1000
+    vocab_size = 10000
     special_tokens = ["<|endoftext|>"]
     batch_size = 16
     context_length = 64 # 序列长度
