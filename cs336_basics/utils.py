@@ -8,6 +8,9 @@ import math
 import numpy.typing as npt
 import numpy as np
 import os
+import pickle
+
+
 
 def cross_entropy(inputs: Float[Tensor, " batch_size vocab_size"], targets: Int[Tensor, " batch_size"]) -> Float[Tensor, ""]:
     """Given a tensor of inputs and targets, compute the average cross-entropy
@@ -36,7 +39,6 @@ def cross_entropy(inputs: Float[Tensor, " batch_size vocab_size"], targets: Int[
     # loss [batch]
     loss = -(target_logits - log_sum_exp)
     return loss.mean()
-
 
 def get_lr_cosine_schedule(
     it: int,
@@ -77,7 +79,6 @@ def get_lr_cosine_schedule(
         alpha = min_learning_rate
     return alpha
 
-
 def gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
     """
     在训练过程中，有时某些样本会导致模型产生非常大的梯度，这会破坏训练的稳定性（如导致梯度爆炸）。为了解决这个问题，进行梯度剪裁
@@ -105,7 +106,6 @@ def gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: flo
             if params.grad is not None:
                 # mul_ 原地操作
                 params.grad.data.mul_(scale_factor)
-
 
 def get_batch(
     dataset: npt.NDArray, batch_size: int, context_length: int, device: str
@@ -142,10 +142,6 @@ def get_batch(
     
     return input_batch, target_batch
 
-
-
-
-
 def save_checkpoint(
     model: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
@@ -172,9 +168,6 @@ def save_checkpoint(
 
     torch.save(checkpoint, out)
 
-
-
-
 def load_checkpoint(
     src: str | os.PathLike | BinaryIO | IO[bytes],
     model: torch.nn.Module,
@@ -198,3 +191,25 @@ def load_checkpoint(
     model.load_state_dict(checkpoint["model"])
     optimizer.load_state_dict(checkpoint["optimizer"])
     return checkpoint["iteration"]
+
+def save_bpe(vocab, merges, save_dir, data_name):
+    os.makedirs(save_dir, exist_ok=True)
+    vocab_path = os.path.join(save_dir, f"bpe_vocab_{data_name}.pkl")
+    merges_path = os.path.join(save_dir, f"bpe_merges_{data_name}.pkl")
+
+    with open(vocab_path, "wb") as f_vocab, open(merges_path, "wb") as f_merges:
+        pickle.dump(vocab, f_vocab)
+        pickle.dump(merges, f_merges)
+
+def load_bpe(load_dir, data_name):
+    vocab_path = os.path.join(load_dir, f"bpe_vocab_{data_name}.pkl")
+    merges_path = os.path.join(load_dir, f"bpe_merges_{data_name}.pkl")
+
+    with open(vocab_path, "rb") as f_vocab, open(merges_path, "rb") as f_merges:
+        vocab = pickle.load(f_vocab)
+        merges = pickle.load(f_merges)
+
+    return vocab, merges
+
+
+

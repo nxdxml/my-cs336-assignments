@@ -14,11 +14,44 @@ import numpy as np
 
 
 from cs336_basics.inference import generate_text
+from cs336_basics.utils import save_bpe, load_bpe
+
+import logging
+# 导入输出到一个log中
+def setup_logger(log_file_path: str):
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)  # 全局最低日志等级
+
+    # 清理已有处理器，防止重复添加
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    # 控制台处理器
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    console_formatter = logging.Formatter('%(message)s')  # 简洁格式
+    console_handler.setFormatter(console_formatter)
+
+    # 文件处理器
+    file_handler = logging.FileHandler(log_file_path, mode='w', encoding='utf-8')
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(file_formatter)
+
+    # 添加处理器
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+
+    return logger
 
 def main():
     # 1训练配置参数
-    train_epochs = 100 # 训练步数
-    input_path = "C:\\Users\\asus\\Desktop\\cuda\\source\\assignment1-basics\\data\\TinyStoriesV2-GPT4-valid-mini.txt"
+    train_epochs = 1000 # 训练步数
+    # input_path = "/home/dl/projects/my-cs336-assignments/data/TinyStoriesV2-GPT4-valid-mini.txt"
+    input_path = "/home/dl/projects/my-cs336-assignments/data/TinyStoriesV2-GPT4-train.txt"
+    base_name = os.path.basename(input_path)  # "TinyStoriesV2-GPT4-valid-mini.txt"
+    name_without_ext = os.path.splitext(base_name)[0]  # "TinyStoriesV2-GPT4-valid-mini"
+    
     vocab_size = 10000
     special_tokens = ["<|endoftext|>"]
     batch_size = 16
@@ -29,41 +62,47 @@ def main():
     num_layers = 4 # transformer block 个数
     d_ff = 4 * d_model 
     rope_theta = 10000
-    checkpoint_path = "C:\\Users\\asus\\Desktop\\cuda\\source\\assignment1-basics\\cs336_basics\\checkpoint"
-    use_bpe = True # 是否需要使用bpe
-    dataset_path = "C:\\Users\\asus\\Desktop\\cuda\\source\\assignment1-basics\\data\\dataset.npy"
+    checkpoint_path = "/home/dl/projects/my-cs336-assignments/cs336_basics/checkpoint"
+    use_bpe = True # 是否需要使用bpe_train
+    use_tokenizer = True # 是否已经训练好了词表和merges
+
+    dataset_path = f"/home/dl/projects/my-cs336-assignments/data/dataset_{name_without_ext}_{vocab_size}.npy"
 
     # print(f"device = {device}")
+    logger = setup_logger(f"{checkpoint_path}/training.log") # 记录训练日志
 
     # 2训练BPE分词器
-    if use_bpe:
-        print("train_bpe开始")
-        start = time.time()
-        vocab, merges = run_train_bpe(
-            input_path=input_path,
-            vocab_size=vocab_size,
-            special_tokens=special_tokens,
-        )
-
-        print("train_bpe结束")
-        tokenizer = get_tokenizer(vocab=vocab,
-                                merges=merges,
-                                special_tokens=special_tokens)
-        end = time.time()
-        print(f"耗时：{end - start:.4f} 秒")
-        print("tokenizer初始化结束")
-        # 90s
+    if use_bpe or use_tokenizer:
+        if use_bpe:
+            logger.info("train_bpe开始")
+            start = time.time()
+            vocab, merges = run_train_bpe(
+                input_path=input_path,
+                vocab_size=vocab_size,
+                special_tokens=special_tokens,
+            )
+            save_bpe(vocab=vocab, merges=merges, save_dir=checkpoint_path, data_name=name_without_ext)
+            logger.info("train_bpe结束")
+            tokenizer = get_tokenizer(vocab=vocab,
+                                    merges=merges,
+                                    special_tokens=special_tokens)
+            end = time.time()
+            logger.info(f"耗时：{end - start:.4f} 秒")
+        else :
+            vocab, merges = load_bpe(load_dir=checkpoint_path, data_name=name_without_ext)
+            tokenizer = get_tokenizer(vocab=vocab,
+                        merges=merges,
+                        special_tokens=special_tokens)
+        logger.info("tokenizer初始化结束")
         dataset = []
         with open(input_path, encoding='utf-8') as f:
-            for i, _id in enumerate(tokenizer.encode_iterable(f)):
+            for i, _id in tqdm(enumerate(tokenizer.encode_iterable(f)), desc="bpe_tokenizing"):
                 dataset.append(_id)
-                if i % 10000 == 0:
-                    print(f"已处理 {i} 行")
         np.save(dataset_path, np.array(dataset, dtype=np.uint16))
     else :
         dataset = np.load(dataset_path)
         max_token = dataset.max()
-        print(f"Loaded dataset with max token id = {max_token}")
+        logger.info(f"Loaded dataset with max token id = {max_token}")
         assert max_token < vocab_size, f"Error: dataset max token id {max_token} >= vocab_size {vocab_size}!"
     # 已处理 9369000 行 vocav=500
 
@@ -71,7 +110,7 @@ def main():
     # with open(input_path, encoding='utf-8') as f:
     #     for _id in tokenizer.encode_iterable(f):
     #         dataset.append(_id)
-    print("分词器工作结束")
+    logger.info("分词器工作结束")
     # 3模型
     model = TransformerLM(
         vocab_size=vocab_size,
@@ -118,8 +157,8 @@ def main():
 
         # 保存
         if step % 100 == 0:
-            print(f'正在进行第{step}轮训练')
-            print(f'loss = {loss.item()}')
+            logger.info(f'正在进行第{step}轮训练')
+            logger.info(f'loss = {loss.item()}')
             # run_save_checkpoint(model=model,
             #                 optimizer=optimizer,
             #                 iteration=step,
@@ -127,10 +166,10 @@ def main():
         
 
 
-    print("训练完成")
+    logger.info("训练完成")
     # 临时写一个推理代码
     if use_bpe:
-        prompt_text = "Once upon a time"
+        prompt_text = "Long Long ago"
         prompt_tokens = torch.tensor(tokenizer.encode(prompt_text), dtype=torch.long)
         generated_tokens = generate_text(
             model=model,
@@ -139,7 +178,7 @@ def main():
             context_length=context_length,
         )
         generated_text = tokenizer.decode(generated_tokens.tolist())
-        print(generated_text)
+        logger.info(generated_text)
 
 if __name__ == "__main__":
     main()
