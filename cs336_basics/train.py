@@ -14,7 +14,7 @@ import numpy as np
 
 
 from cs336_basics.inference import generate_text
-from cs336_basics.utils import save_bpe, load_bpe
+from cs336_basics.utils import save_bpe, load_bpe, detailed_parameter_stats
 
 import logging
 # 导入输出到一个log中
@@ -47,24 +47,24 @@ def setup_logger(log_file_path: str):
 def main():
     # 1训练配置参数
     train_epochs = 1000 # 训练步数
-    # input_path = "/home/dl/projects/my-cs336-assignments/data/TinyStoriesV2-GPT4-valid-mini.txt"
-    input_path = "/home/dl/projects/my-cs336-assignments/data/TinyStoriesV2-GPT4-train.txt"
+    input_path = "/home/dl/projects/my-cs336-assignments/data/TinyStoriesV2-GPT4-valid-mini.txt"
+    # input_path = "/home/dl/projects/my-cs336-assignments/data/TinyStoriesV2-GPT4-train.txt"
     base_name = os.path.basename(input_path)  # "TinyStoriesV2-GPT4-valid-mini.txt"
     name_without_ext = os.path.splitext(base_name)[0]  # "TinyStoriesV2-GPT4-valid-mini"
     
     vocab_size = 10000
     special_tokens = ["<|endoftext|>"]
-    batch_size = 16
+    batch_size = 4
     context_length = 64 # 序列长度
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    d_model = 128 # 嵌入维度
-    num_heads = 4
-    num_layers = 4 # transformer block 个数
+    d_model = 768 # 嵌入维度
+    num_heads = 12
+    num_layers = 12 # transformer block 个数
     d_ff = 4 * d_model 
     rope_theta = 10000
     checkpoint_path = "/home/dl/projects/my-cs336-assignments/cs336_basics/checkpoint"
-    use_bpe = True # 是否需要使用bpe_train
-    use_tokenizer = True # 是否已经训练好了词表和merges
+    use_bpe = False # 是否需要使用bpe_train
+    use_tokenizer = False # 是否已经训练好了词表和merges
 
     dataset_path = f"/home/dl/projects/my-cs336-assignments/data/dataset_{name_without_ext}_{vocab_size}.npy"
 
@@ -122,6 +122,8 @@ def main():
         rope_theta=rope_theta,
         device=device, # 加入device
     ).to(device)
+    # 统计参数量
+    detailed_parameter_stats(model=model)
     # 4优化器
     optimizer = AdamW(model.parameters())
     # 检查参数所在设备
@@ -129,6 +131,8 @@ def main():
     #     print(f"{name}: {param.device}")
 
     # 5展开训练
+    # 内存分析
+    torch.cuda.memory._record_memory_history(max_entries=1000000)
     model.train()
     for step in range(train_epochs):
         # 清楚所有可学习参数梯度
@@ -145,6 +149,7 @@ def main():
         targets = targets.to(device)
 
         x = model(x)
+
 
         # cross_entropy输入维度问题
         B, T, V = x.shape
@@ -165,6 +170,8 @@ def main():
             #                 out=os.path.join(checkpoint_path, f"checkpoint_step{step}.pt"))
         
 
+    torch.cuda.memory._dump_snapshot("memory_snapshot.pickle")
+    torch.cuda.memory._record_memory_history(enabled=None)
 
     logger.info("训练完成")
     # 临时写一个推理代码

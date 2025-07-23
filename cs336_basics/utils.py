@@ -1,5 +1,6 @@
 
 import torch
+import torch.nn as nn
 from torch import Tensor
 from jaxtyping import Float, Int
 from typing import Iterable
@@ -213,3 +214,24 @@ def load_bpe(load_dir, data_name):
 
 
 
+def detailed_parameter_stats(model: nn.Module):
+    print(f"{'Parameter Name':<60} {'Shape':<30} {'#Params':<10} {'Trainable'}")
+    print("-" * 120)
+    
+    total_params = 0
+    trainable_params = 0
+
+    for name, param in model.named_parameters():
+        num_params = param.numel()
+        shape = tuple(param.shape)
+        trainable = param.requires_grad
+
+        total_params += num_params
+        if trainable:
+            trainable_params += num_params
+
+        print(f"{name:<60} {str(shape):<30} {num_params:<10} {trainable}")
+
+    print("-" * 120)
+    print(f"{'Total parameters:':<92} {total_params:,}")
+    print(f"{'Trainable parameters:':<92} {trainable_params:,}")
