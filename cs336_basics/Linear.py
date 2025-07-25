@@ -20,6 +20,7 @@ class Linear(nn.Module):
         super().__init__()
         # construct and store your parameter as W (not WT) for memory ordering reasons
         # putting it in an nn.Parameter
+        # 等价于 self.register_parameter('W', nn.Parameter(...))
         self.W = nn.Parameter(
             torch.empty(out_features, in_features, device=device, dtype=dtype)
         )

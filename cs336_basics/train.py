@@ -17,6 +17,7 @@ from cs336_basics.inference import generate_text
 from cs336_basics.utils import save_bpe, load_bpe, detailed_parameter_stats
 
 import logging
+from deepspeed.runtime.utils import see_memory_usage
 # 导入输出到一个log中
 def setup_logger(log_file_path: str):
     logger = logging.getLogger()
@@ -148,7 +149,9 @@ def main():
         x = x.to(device)
         targets = targets.to(device)
 
+        see_memory_usage("Before forward", force=True)
         x = model(x)
+        see_memory_usage("After forward", force=True)
 
 
         # cross_entropy输入维度问题
@@ -170,7 +173,7 @@ def main():
             #                 out=os.path.join(checkpoint_path, f"checkpoint_step{step}.pt"))
         
 
-    torch.cuda.memory._dump_snapshot("memory_snapshot.pickle")
+    # torch.cuda.memory._dump_snapshot("memory_snapshot.pickle")
     torch.cuda.memory._record_memory_history(enabled=None)
 
     logger.info("训练完成")

@@ -146,3 +146,12 @@ Trainable parameters:                                                           
 
 ## 消融实验
 比如把RMS-norm去掉，改成post-norm，rope改成别的编码等
+
+## 
+
+``` sh
+[2025-07-26 00:39:06,690] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 10.37 GB, percent = 5.5%
+[2025-07-26 00:39:06,760] [INFO] [utils.py:781:see_memory_usage] After forward
+[2025-07-26 00:39:06,761] [INFO] [utils.py:782:see_memory_usage] MA 1.76 GB         Max_MA 1.76 GB         CA 2.53 GB         Max_CA 3 GB 
+[2025-07-26 00:39:06,761] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 10.37 GB, percent = 5.5%
+```
